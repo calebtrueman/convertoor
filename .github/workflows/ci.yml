@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
@@ -18,8 +18,6 @@ jobs:
             python3-fonttools python3-brotli ffmpeg imagemagick pandoc poppler-utils \
             librsvg2-bin libheif-examples p7zip-full libreoffice-writer-nogui \
             libreoffice-calc-nogui xvfb xauth dbus shellcheck
-      - name: Lint shell scripts
-        run: shellcheck -S warning install.sh packaging/*.sh packaging/debian/build.sh
       - name: Unit and integration tests
         run: /usr/bin/python3 -m pytest -v tests
       - name: CLI doctor
@@ -34,3 +32,5 @@ jobs:
           ffmpeg -loglevel error -f lavfi -i "sine=duration=1" /tmp/tone.wav
           dbus-run-session -- xvfb-run -a /usr/bin/python3 -m convertoor --self-test /tmp/tone.wav mp3
           test -s /tmp/tone.mp3
+      - name: Lint shell scripts
+        run: shellcheck -S warning install.sh packaging/*.sh packaging/debian/build.sh

@@ -26,7 +26,7 @@ case "$kind" in
     tarball)
         work=$(mktemp -d)
         tar -xzf "$pkg" -C "$work"
-        "$work"/convertoor-*/install.sh
+        sh "$work"/convertoor-*/install.sh
         if command -v dnf >/dev/null; then dnf install -y xorg-x11-server-Xvfb dbus-daemon xauth which; fi
         if command -v apt-get >/dev/null; then apt-get install -y xvfb xauth dbus; fi
         ;;

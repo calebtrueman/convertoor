@@ -14,7 +14,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: v
         run: echo "version=$(sh packaging/version.sh)" >> "$GITHUB_OUTPUT"
       - name: Check tag matches version
@@ -25,16 +25,16 @@ jobs:
           mkdir -p dist
           git archive --format=tar.gz --prefix="convertoor-${{ steps.v.outputs.version }}/" \
             -o "dist/convertoor-${{ steps.v.outputs.version }}.tar.gz" HEAD
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: tarball, path: dist/* }
 
   deb:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: packaging/debian/build.sh
       - run: dpkg-deb --info dist/*.deb && dpkg-deb --contents dist/*.deb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: deb, path: dist/*.deb }
 
   rpm:
@@ -43,7 +43,7 @@ jobs:
     container: fedora:latest
     steps:
       - run: dnf install -y rpm-build tar gzip
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with: { name: tarball, path: src }
       - name: Build RPM
         run: |
@@ -55,7 +55,7 @@ jobs:
             convertoor-$V/packaging/rpm/convertoor.spec
           cp ~/rpmbuild/RPMS/noarch/*.rpm dist/
           rpm -qpR dist/*.rpm
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: rpm, path: dist/*.rpm }
 
   arch:
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with: { name: tarball, path: src }
       - name: Build Arch package
         run: |
@@ -77,7 +77,7 @@ jobs:
           chown -R builder /build
           su builder -c "cd /build && makepkg --nodeps --noconfirm"
           cp /build/*.pkg.tar.zst dist/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: arch, path: dist/*.pkg.tar.zst }
 
   smoke:
@@ -102,9 +102,9 @@ jobs:
         run: |
           if command -v dnf >/dev/null; then dnf install -y tar gzip findutils; fi
           if command -v zypper >/dev/null; then zypper --non-interactive install tar gzip findutils; fi
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with: { name: "${{ matrix.artifact }}", path: pkg }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with: { name: tarball, path: src }
       - name: Install and test
         run: |
@@ -116,8 +116,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
         with: { path: artifacts, merge-multiple: true }
       - name: Checksums
         run: cd artifacts && sha256sum * > SHA256SUMS && cat SHA256SUMS

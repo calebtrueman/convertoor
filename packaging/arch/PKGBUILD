@@ -1,0 +1,26 @@
+# Maintainer: Caleb Trueman <calebtrueman@users.noreply.github.com>
+pkgname=convertoor
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Drag-and-drop file converter for images, audio, video, documents and more"
+arch=('any')
+url="https://github.com/calebtrueman/convertoor"
+license=('MIT')
+depends=('python' 'python-gobject' 'gtk4' 'libadwaita' 'ffmpeg' 'imagemagick'
+         'pandoc-cli' 'poppler' 'librsvg')
+optdepends=('libreoffice-fresh: office documents, spreadsheets and presentations'
+            'python-yaml: YAML files'
+            'python-fonttools: font conversion'
+            'python-brotli: WOFF2 fonts'
+            'libheif: HEIC photos'
+            '7zip: 7z and RAR archives'
+            'calibre: ebook formats (MOBI, AZW3, FB2 ...)'
+            'texlive-xetex: direct Markdown to PDF')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/calebtrueman/convertoor/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    cd "$srcdir/$pkgname-$pkgver"
+    DESTDIR="$pkgdir" PREFIX=/usr ./install.sh --no-deps
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

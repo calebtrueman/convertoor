@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Convertoor
+GenericName=File Converter
+Comment=Convert images, audio, video, documents and more by drag and drop
+Exec=convertoor %F
+Icon=io.github.calebtrueman.Convertoor
+Terminal=false
+Categories=Utility;AudioVideo;Graphics;Office;GTK;
+Keywords=convert;converter;transcode;image;audio;video;document;pdf;mp3;mp4;png;jpg;docx;ebook;
+StartupNotify=true
+DBusActivatable=false
+MimeType=image/png;image/jpeg;image/webp;image/gif;image/bmp;image/tiff;image/heic;image/heif;image/avif;image/jxl;image/svg+xml;image/x-icon;image/vnd.adobe.photoshop;image/x-xcf;image/x-tga;image/x-canon-cr2;image/x-nikon-nef;image/x-sony-arw;image/x-adobe-dng;audio/mpeg;audio/x-wav;audio/wav;audio/flac;audio/ogg;audio/opus;audio/mp4;audio/aac;audio/x-ms-wma;audio/x-aiff;audio/x-matroska;video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/x-ms-wmv;video/x-flv;video/mpeg;video/3gpp;video/mp2t;video/ogg;application/x-subrip;text/vtt;application/pdf;application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.oasis.opendocument.text;application/rtf;text/plain;text/markdown;text/html;text/x-rst;text/x-tex;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.oasis.opendocument.spreadsheet;text/csv;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.presentation;application/epub+zip;application/x-mobipocket-ebook;application/x-fictionbook+xml;application/json;application/x-yaml;application/toml;application/xml;application/zip;application/x-tar;application/x-compressed-tar;application/x-bzip-compressed-tar;application/x-xz-compressed-tar;application/x-7z-compressed;application/vnd.rar;font/ttf;font/otf;font/woff;font/woff2;

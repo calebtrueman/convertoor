@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "convertoor"
+dynamic = ["version"]
+description = "Drag-and-drop file converter for images, audio, video, documents and more"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Caleb Trueman" }]
+requires-python = ">=3.8"
+classifiers = [
+  "Environment :: X11 Applications :: GTK",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Multimedia :: Sound/Audio :: Conversion",
+  "Topic :: Multimedia :: Video :: Conversion",
+  "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+]
+
+[project.optional-dependencies]
+extras = ["PyYAML", "fonttools", "brotli"]
+
+[project.scripts]
+convertoor = "convertoor.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/calebtrueman/convertoor"
+
+[tool.setuptools.dynamic]
+version = { attr = "convertoor.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

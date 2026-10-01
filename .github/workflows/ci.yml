@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            python3-pytest python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-yaml \
+            python3-fonttools python3-brotli ffmpeg imagemagick pandoc poppler-utils \
+            librsvg2-bin libheif-examples p7zip-full libreoffice-writer-nogui \
+            libreoffice-calc-nogui xvfb xauth dbus shellcheck
+      - name: Lint shell scripts
+        run: shellcheck -S warning install.sh packaging/*.sh packaging/debian/build.sh
+      - name: Unit and integration tests
+        run: /usr/bin/python3 -m pytest -v tests
+      - name: CLI doctor
+        run: PYTHONPATH=src /usr/bin/python3 -m convertoor --doctor
+      - name: GUI self-test
+        env:
+          PYTHONPATH: src
+          GSK_RENDERER: cairo
+          GDK_BACKEND: x11
+          NO_AT_BRIDGE: "1"
+        run: |
+          ffmpeg -loglevel error -f lavfi -i "sine=duration=1" /tmp/tone.wav
+          dbus-run-session -- xvfb-run -a /usr/bin/python3 -m convertoor --self-test /tmp/tone.wav mp3
+          test -s /tmp/tone.mp3

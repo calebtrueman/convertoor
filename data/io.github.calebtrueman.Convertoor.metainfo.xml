@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.calebtrueman.Convertoor</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Convertoor</name>
+  <summary>Drag-and-drop file converter</summary>
+  <developer id="io.github.calebtrueman">
+    <name>Caleb Trueman</name>
+  </developer>
+  <description>
+    <p>
+      Convertoor converts almost any file to almost any other format. Drop in images,
+      audio, video, documents, spreadsheets, presentations, ebooks, archives, fonts or
+      data files, pick a format and press Convert.
+    </p>
+    <p>
+      It drives proven open-source tools — FFmpeg, ImageMagick, Pandoc, LibreOffice,
+      Poppler, librsvg, libheif, Calibre and fontTools — and automatically chains them
+      when no single tool can do the job.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.calebtrueman.Convertoor.desktop</launchable>
+  <url type="homepage">https://github.com/calebtrueman/convertoor</url>
+  <url type="bugtracker">https://github.com/calebtrueman/convertoor/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-10-01"/>
+  </releases>
+</component>

@@ -1,0 +1,18 @@
+Package: convertoor
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: all
+Installed-Size: @SIZE@
+Maintainer: Caleb Trueman <calebtrueman@users.noreply.github.com>
+Homepage: https://github.com/calebtrueman/convertoor
+Depends: python3 (>= 3.8), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, ffmpeg, imagemagick, pandoc, poppler-utils, librsvg2-bin
+Recommends: libreoffice-writer, libreoffice-calc, libreoffice-impress, libreoffice-draw, python3-yaml, python3-fonttools, python3-brotli, libheif-examples, 7zip | p7zip-full
+Suggests: calibre, texlive-xetex
+Description: Drag-and-drop file converter
+ Convertoor converts images, audio, video, documents, spreadsheets,
+ presentations, ebooks, archives, fonts and data files between formats.
+ Drop files on the window, pick a format and press Convert.
+ .
+ It drives FFmpeg, ImageMagick, Pandoc, LibreOffice, Poppler, librsvg,
+ libheif, Calibre and fontTools, chaining them automatically when needed.

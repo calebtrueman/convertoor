@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: echo "version=$(sh packaging/version.sh)" >> "$GITHUB_OUTPUT"
+      - name: Check tag matches version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "${GITHUB_REF_NAME#v}" = "${{ steps.v.outputs.version }}"
+      - name: Build universal tarball
+        run: |
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="convertoor-${{ steps.v.outputs.version }}/" \
+            -o "dist/convertoor-${{ steps.v.outputs.version }}.tar.gz" HEAD
+      - uses: actions/upload-artifact@v4
+        with: { name: tarball, path: dist/* }
+
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: packaging/debian/build.sh
+      - run: dpkg-deb --info dist/*.deb && dpkg-deb --contents dist/*.deb
+      - uses: actions/upload-artifact@v4
+        with: { name: deb, path: dist/*.deb }
+
+  rpm:
+    needs: tarball
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - run: dnf install -y rpm-build tar gzip
+      - uses: actions/download-artifact@v4
+        with: { name: tarball, path: src }
+      - name: Build RPM
+        run: |
+          V=${{ needs.tarball.outputs.version }}
+          mkdir -p ~/rpmbuild/SOURCES dist
+          cp src/convertoor-$V.tar.gz ~/rpmbuild/SOURCES/
+          tar -xzf src/convertoor-$V.tar.gz convertoor-$V/packaging/rpm/convertoor.spec
+          rpmbuild -bb --define "version_override $V" --define "dist %{nil}" \
+            convertoor-$V/packaging/rpm/convertoor.spec
+          cp ~/rpmbuild/RPMS/noarch/*.rpm dist/
+          rpm -qpR dist/*.rpm
+      - uses: actions/upload-artifact@v4
+        with: { name: rpm, path: dist/*.rpm }
+
+  arch:
+    needs: tarball
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: tarball, path: src }
+      - name: Build Arch package
+        run: |
+          V=${{ needs.tarball.outputs.version }}
+          useradd -m builder
+          mkdir -p /build dist
+          tar -xzf src/convertoor-$V.tar.gz -C /tmp
+          cp /tmp/convertoor-$V/packaging/arch/PKGBUILD /build/
+          cp src/convertoor-$V.tar.gz /build/
+          sed -i "s/^pkgver=.*/pkgver=$V/" /build/PKGBUILD
+          chown -R builder /build
+          su builder -c "cd /build && makepkg --nodeps --noconfirm"
+          cp /build/*.pkg.tar.zst dist/
+      - uses: actions/upload-artifact@v4
+        with: { name: arch, path: dist/*.pkg.tar.zst }
+
+  smoke:
+    needs: [tarball, deb, rpm, arch]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: "ubuntu:22.04", kind: deb, artifact: deb }
+          - { image: "ubuntu:24.04", kind: deb, artifact: deb }
+          - { image: "debian:12", kind: deb, artifact: deb }
+          - { image: "debian:13", kind: deb, artifact: deb }
+          - { image: "fedora:latest", kind: fedora, artifact: rpm }
+          - { image: "opensuse/tumbleweed", kind: suse, artifact: rpm }
+          - { image: "archlinux:latest", kind: arch, artifact: arch }
+          - { image: "fedora:latest", kind: tarball, artifact: tarball }
+    container: ${{ matrix.image }}
+    name: smoke (${{ matrix.image }}, ${{ matrix.kind }})
+    steps:
+      - name: Prepare container
+        run: |
+          if command -v dnf >/dev/null; then dnf install -y tar gzip findutils; fi
+          if command -v zypper >/dev/null; then zypper --non-interactive install tar gzip findutils; fi
+      - uses: actions/download-artifact@v4
+        with: { name: "${{ matrix.artifact }}", path: pkg }
+      - uses: actions/download-artifact@v4
+        with: { name: tarball, path: src }
+      - name: Install and test
+        run: |
+          tar -xzf src/*.tar.gz
+          sh convertoor-*/packaging/smoke-test.sh ${{ matrix.kind }} "$(ls pkg/* | head -n1)"
+
+  publish:
+    needs: [tarball, smoke]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts, merge-multiple: true }
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ needs.tarball.outputs.version }}
+          sed "s/@VERSION@/$V/g" packaging/release-notes.md > notes.md
+          gh release create "$GITHUB_REF_NAME" artifacts/* --title "Convertoor $V" --notes-file notes.md

@@ -3,7 +3,7 @@
 %global __python %{__python3}
 
 Name:           convertoor
-Version:        %{?version_override}%{!?version_override:1.1.0}
+Version:        %{?version_override}%{!?version_override:1.1.1}
 Release:        1%{?dist}
 Summary:        Drag-and-drop file converter
 License:        MIT
@@ -56,6 +56,9 @@ DESTDIR=%{buildroot} PREFIX=%{_prefix} ./install.sh --no-deps
 %{_datadir}/metainfo/io.github.calebtrueman.Convertoor.metainfo.xml
 
 %changelog
+* Thu Oct 01 2026 Caleb Trueman <calebtrueman@users.noreply.github.com> - 1.1.1-1
+- Explain when LibreOffice or Calibre is required; JSON/CSV to spreadsheet routes
+
 * Thu Oct 01 2026 Caleb Trueman <calebtrueman@users.noreply.github.com> - 1.1.0-1
 - Flatpak build; use host LibreOffice/Calibre from Flatpak
 

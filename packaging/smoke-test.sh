@@ -16,7 +16,7 @@ case "$kind" in
         ;;
     suse)
         zypper --non-interactive refresh
-        zypper --non-interactive install --allow-unsigned-rpm "$pkg" xvfb-run dbus-1 xauth which
+        zypper --non-interactive install --allow-unsigned-rpm "$pkg" xvfb-run dbus-1 xauth which gawk
         zypper --non-interactive install dbus-1-daemon || zypper --non-interactive install dbus-1-tools || true
         ;;
     arch)

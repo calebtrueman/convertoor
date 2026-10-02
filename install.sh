@@ -97,7 +97,7 @@ install_deps() {
         opt="ImageMagick pandoc poppler-utils librsvg2-tools libheif-tools python3-pyyaml python3-fonttools python3-brotli 7zip $office_rpm"
         command -v ffmpeg >/dev/null 2>&1 || opt="ffmpeg-free $opt"
         [ "$FULL" -eq 1 ] && opt="$opt calibre"
-        pkg_install dnf "python3 python3-gobject gtk4 libadwaita" "$opt"
+        pkg_install dnf "python3 python3-gobject gobject-introspection gtk4 libadwaita" "$opt"
     elif command -v zypper >/dev/null 2>&1; then
         opt="/usr/bin/ffmpeg ImageMagick /usr/bin/pandoc poppler-tools rsvg-convert python3-PyYAML python3-fonttools python3-Brotli 7zip $office_rpm"
         [ "$FULL" -eq 1 ] && opt="$opt calibre"

@@ -13,8 +13,13 @@ BuildArch:      noarch
 
 Requires:       python3 >= 3.8
 Requires:       python3-gobject
-Requires:       (gtk4 or typelib-1_0-Gtk-4_0)
-Requires:       (libadwaita or typelib-1_0-Adw-1)
+# Fedora names first, openSUSE names second. openSUSE splits the GObject
+# typelibs into their own packages, so require them whenever its libs are used.
+Requires:       (gtk4 or libgtk-4-1)
+Requires:       (libadwaita or libadwaita-1-0)
+Requires:       (gobject-introspection if gtk4)
+Requires:       (typelib-1_0-Gtk-4_0 if libgtk-4-1)
+Requires:       (typelib-1_0-Adw-1 if libadwaita-1-0)
 Requires:       /usr/bin/ffmpeg
 Recommends:     ImageMagick
 Recommends:     /usr/bin/pandoc

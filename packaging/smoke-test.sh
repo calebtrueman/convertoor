@@ -1,9 +1,11 @@
 #!/bin/sh
 # Install a built package inside a distro container and exercise it.
-#   packaging/smoke-test.sh deb|fedora|suse|arch|tarball <artifact>
+#   packaging/smoke-test.sh deb|fedora|suse|arch|tarball|flatpak <artifact>
 set -eux
 kind=$1
 pkg=$(readlink -f "$2")
+here=$(cd "$(dirname "$0")/.." && pwd)
+workdir=$(mktemp -d)
 
 case "$kind" in
     deb)
@@ -31,13 +33,32 @@ case "$kind" in
         if command -v dnf >/dev/null; then dnf install -y xorg-x11-server-Xvfb dbus-daemon xauth which; fi
         if command -v apt-get >/dev/null; then apt-get install -y xvfb xauth dbus; fi
         ;;
+    flatpak)
+        # Runs on an Ubuntu host: the bundle brings its own converters.
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends flatpak xvfb xauth dbus ffmpeg
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+        flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+        flatpak install --user -y --noninteractive flathub org.gnome.Platform//51
+        flatpak install --user -y --noninteractive "$pkg"
+        mkdir -p "$HOME/.local/bin"
+        printf '#!/bin/sh\nexec flatpak run io.github.calebtrueman.Convertoor "$@"\n' > "$HOME/.local/bin/convertoor"
+        chmod +x "$HOME/.local/bin/convertoor"
+        export PATH="$HOME/.local/bin:$PATH"
+        # The sandbox has a private /tmp, so work in $HOME.
+        workdir="$HOME/convertoor-smoke"
+        mkdir -p "$workdir"
+        ;;
     *) echo "unknown kind $kind"; exit 2 ;;
 esac
 
 convertoor --version
 convertoor --doctor
 
-cd "$(mktemp -d)"
+# In the Flatpak the converters are bundled, not on the host PATH.
+has() { [ "$kind" = flatpak ] || command -v "$1" >/dev/null; }
+
+cd "$workdir"
 ffmpeg -loglevel error -f lavfi -i "sine=frequency=440:duration=1" tone.wav
 ffmpeg -loglevel error -f lavfi -i "testsrc=duration=1:size=160x120:rate=10" -pix_fmt yuv420p clip.mp4
 ffmpeg -loglevel error -f lavfi -i "testsrc=size=160x120" -frames:v 1 pic.png
@@ -50,11 +71,21 @@ convertoor -t webm clip.mp4
 convertoor -t gif clip.mp4
 convertoor -t jpg pic.png
 convertoor -t xml data.json
-if command -v pandoc >/dev/null; then convertoor -t docx doc.md; fi
-if command -v rsvg-convert >/dev/null; then
-    prefix=$(dirname "$(dirname "$(command -v convertoor)")")
-    cp "$prefix/share/icons/hicolor/scalable/apps/io.github.calebtrueman.Convertoor.svg" icon.svg
+if has pandoc; then convertoor -t docx doc.md; fi
+if has rsvg-convert || has magick; then
+    cp "$here/data/icons/io.github.calebtrueman.Convertoor.svg" icon.svg
     convertoor -t png icon.svg
+fi
+if [ "$kind" = flatpak ]; then
+    # Exercise every bundled tool.
+    convertoor -t webp pic.png
+    convertoor -t pdf pic.png
+    convertoor -t png pic.pdf
+    tar -cf files.tar doc.md data.json
+    convertoor -t 7z files.tar
+    convertoor -t yaml data.json
+    convertoor -t html doc.md
+    [ "$(convertoor --doctor | grep -cE "✔ (FFmpeg|ImageMagick|Pandoc|Poppler|libheif|fontTools)  ")" -eq 6 ]
 fi
 ls -la
 

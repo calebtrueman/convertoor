@@ -78,6 +78,49 @@ def which(*names):
     return None
 
 
+IN_FLATPAK = os.path.exists("/.flatpak-info")
+
+
+@functools.lru_cache(maxsize=None)
+def host_command(binaries, flatpak_app=None, flatpak_command=None):
+    """Command prefix that runs a host tool from inside the Flatpak sandbox.
+
+    Tries a native install on the host first, then the tool's own Flatpak.
+    Returns None outside Flatpak or when the host has neither.
+    """
+    if not IN_FLATPAK or not shutil.which("flatpak-spawn"):
+        return None
+
+    def host(*args):
+        try:
+            r = subprocess.run(["flatpak-spawn", "--host"] + list(args), capture_output=True,
+                               text=True, timeout=20, stdin=subprocess.DEVNULL)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return r.stdout.strip() if r.returncode == 0 else None
+
+    for name in binaries:
+        found = host("sh", "-c", f"command -v {name}")
+        if found:
+            return ("flatpak-spawn", "--host", found)
+    if flatpak_app and host("flatpak", "info", "--show-ref", flatpak_app):
+        return ("flatpak-spawn", "--host", "flatpak", "run", f"--command={flatpak_command}",
+                flatpak_app)
+    return None
+
+
+def host_path(path):
+    """Map a document-portal path (from drag and drop in Flatpak) to the real file."""
+    path = os.fspath(path)
+    if "/doc/" not in path or not path.startswith("/run/"):
+        return path
+    try:
+        real = os.getxattr(path, "user.document-portal.host-path").decode().rstrip("\0")
+    except (OSError, AttributeError, UnicodeDecodeError):
+        return path
+    return real if real and os.access(real, os.R_OK) else path
+
+
 def run(cmd, job, cwd=None, on_line=None, env=None):
     """Run a command, streaming stdout lines to ``on_line``.
 
@@ -163,6 +206,41 @@ class Backend:
 
     def path(self):
         return which(*self.binaries) if self.binaries else "builtin"
+
+    def command(self):
+        """argv prefix used to invoke the tool."""
+        return [self.path()]
+
+
+class HostBackend(Backend):
+    """A tool that, inside Flatpak, may be borrowed from the host system."""
+
+    host_flatpak = None  # (app id, command)
+
+    def __init__(self):
+        if IN_FLATPAK and self.host_flatpak:
+            self.install_hint = f"flatpak install flathub {self.host_flatpak[0]}"
+
+    def _host(self):
+        app, cmd = self.host_flatpak or (None, None)
+        return host_command(self.binaries, app, cmd)
+
+    def path(self):
+        local = which(*self.binaries)
+        if local:
+            return local
+        host = self._host()
+        return " ".join(host) if host else None
+
+    def command(self):
+        local = which(*self.binaries)
+        if local:
+            return [local]
+        host = self._host()
+        return list(host) if host else [None]
+
+    def on_host(self):
+        return not which(*self.binaries) and self._host() is not None
 
     def targets(self, src: str):
         return ()
@@ -574,11 +652,12 @@ DRAW_OUT = ("pdf", "odg", "svg", "png")
 _LO_LOCK = threading.Lock()
 
 
-class LibreOffice(Backend):
+class LibreOffice(HostBackend):
     name = "LibreOffice"
     description = "Office documents, spreadsheets, presentations, to PDF"
     binaries = ("soffice", "libreoffice")
     install_hint = "libreoffice"
+    host_flatpak = ("org.libreoffice.LibreOffice", "libreoffice")
 
     def targets(self, src):
         for ins, outs in ((WRITER_IN, WRITER_OUT), (CALC_IN, CALC_OUT),
@@ -588,7 +667,12 @@ class LibreOffice(Backend):
         return []
 
     def convert(self, src, src_fmt, dst, out, job):
-        profile = _cache_dir() / "libreoffice-profile"
+        if self.on_host():
+            # The host can't see our sandboxed cache dir, use the real one.
+            profile = Path.home() / ".cache" / "convertoor" / "libreoffice-profile"
+            profile.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            profile = _cache_dir() / "libreoffice-profile"
         filt = dst
         if dst == "txt":
             filt = "txt:Text (encoded):UTF8"
@@ -596,7 +680,7 @@ class LibreOffice(Backend):
             filt = "csv:Text - txt - csv (StarCalc):44,34,76"
         elif dst == "html" and src_fmt in CALC_IN:
             filt = "html:HTML (StarCalc)"
-        cmd = [self.path(), f"-env:UserInstallation={profile.as_uri()}", "--headless",
+        cmd = self.command() + [f"-env:UserInstallation={profile.as_uri()}", "--headless",
                "--norestore", "--nologo", "--nolockcheck", "--nodefault"]
         if src_fmt == "html":
             cmd.append("--infilter=HTML (StarWriter)")
@@ -620,11 +704,12 @@ CALIBRE_OUT = ("epub", "mobi", "azw3", "pdf", "docx", "fb2", "txt", "rtf", "html
                "pdb", "txtz")
 
 
-class Calibre(Backend):
+class Calibre(HostBackend):
     name = "Calibre"
     description = "Ebooks: EPUB, MOBI, AZW3, FB2, comics"
     binaries = ("ebook-convert",)
     install_hint = "calibre"
+    host_flatpak = ("com.calibre_ebook.calibre", "ebook-convert")
     targets = staticmethod(_pairs(CALIBRE_IN, CALIBRE_OUT))
 
     def convert(self, src, src_fmt, dst, out, job):
@@ -635,7 +720,7 @@ class Calibre(Backend):
             if m:
                 job.report(int(m.group(1)) / 100)
 
-        run([self.path(), str(src), str(out)], job, on_line=on_line)
+        run(self.command() + [str(src), str(out)], job, on_line=on_line)
         return [out]
 
 
@@ -830,6 +915,7 @@ def available_backends():
 def refresh():
     """Forget cached tool lookups (e.g. after the user installs something)."""
     which.cache_clear()
+    host_command.cache_clear()
     _magick_path.cache_clear()
     _targets_cached.cache_clear()
     _ffmpeg_encoders.cache_clear()

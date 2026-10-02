@@ -80,6 +80,49 @@ jobs:
       - uses: actions/upload-artifact@v5
         with: { name: arch, path: dist/*.pkg.tar.zst }
 
+  flatpak:
+    needs: tarball
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-24.04 }
+          - { arch: aarch64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v5
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          bundle: convertoor-${{ needs.tarball.outputs.version }}-${{ matrix.arch }}.flatpak
+          manifest-path: packaging/flatpak/io.github.calebtrueman.Convertoor.yml
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles('packaging/flatpak/*.yml') }}
+          arch: ${{ matrix.arch }}
+          upload-artifact: false
+      - uses: actions/upload-artifact@v5
+        with:
+          name: flatpak-${{ matrix.arch }}
+          path: convertoor-*.flatpak
+
+  smoke-flatpak:
+    needs: [tarball, flatpak]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-24.04 }
+          - { arch: aarch64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    name: smoke (flatpak, ${{ matrix.arch }})
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with: { name: "flatpak-${{ matrix.arch }}", path: pkg }
+      - name: Install and test
+        run: sh packaging/smoke-test.sh flatpak pkg/*.flatpak
+
   smoke:
     needs: [tarball, deb, rpm, arch]
     runs-on: ubuntu-latest
@@ -112,7 +155,7 @@ jobs:
           sh convertoor-*/packaging/smoke-test.sh ${{ matrix.kind }} "$(ls pkg/* | head -n1)"
 
   publish:
-    needs: [tarball, smoke]
+    needs: [tarball, smoke, smoke-flatpak]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:

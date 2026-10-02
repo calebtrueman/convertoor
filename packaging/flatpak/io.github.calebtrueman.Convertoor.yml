@@ -1,0 +1,196 @@
+# Flatpak build of Convertoor with its converters bundled.
+#
+# Build locally:
+#   flatpak-builder --user --install --force-clean build-dir \
+#     packaging/flatpak/io.github.calebtrueman.Convertoor.yml
+#
+# LibreOffice and Calibre are too large to bundle. When installed on the host
+# (natively or as their own Flatpaks) they're run through flatpak-spawn, which
+# is why this manifest asks for org.freedesktop.Flatpak.
+id: io.github.calebtrueman.Convertoor
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: convertoor
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Converted files are written next to the originals.
+  - --filesystem=home
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --filesystem=/mnt
+  # "Show in folder"
+  - --talk-name=org.freedesktop.FileManager1
+  # Use LibreOffice / Calibre from the host
+  - --talk-name=org.freedesktop.Flatpak
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/man
+  - /share/doc
+  - /share/gtk-doc
+  - '*.a'
+  - '*.la'
+
+modules:
+  - name: lame
+    config-opts: [--disable-static, --disable-frontend, --disable-decoder]
+    sources:
+      - type: archive
+        url: https://downloads.sourceforge.net/lame/lame-3.100.tar.gz
+        sha256: ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
+
+  - name: x264
+    config-opts: [--enable-shared, --enable-pic, --disable-cli]
+    sources:
+      - type: git
+        url: https://code.videolan.org/videolan/x264.git
+        commit: b35605ace3ddf7c1a5d67a2eb553f034aef41d55
+
+  - name: ffmpeg
+    config-opts:
+      - --enable-gpl
+      - --enable-shared
+      - --disable-static
+      - --disable-doc
+      - --disable-debug
+      - --disable-ffplay
+      - --enable-libx264
+      - --enable-libmp3lame
+      - --enable-libvpx
+      - --enable-libopus
+      - --enable-libvorbis
+      - --enable-libwebp
+      - --enable-libdav1d
+    cleanup: [/share/ffmpeg]
+    sources:
+      - type: archive
+        url: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+        sha256: 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+
+  - name: libde265
+    buildsystem: cmake-ninja
+    config-opts: [-DCMAKE_BUILD_TYPE=Release, -DENABLE_SDL=OFF, -DENABLE_DECODER=OFF, -DENABLE_ENCODER=OFF]
+    sources:
+      - type: archive
+        url: https://github.com/strukturag/libde265/releases/download/v1.1.3/libde265-1.1.3.tar.gz
+        sha256: 554228bd17788c99a7e63b37ab5634722190e6e2bf60c1dcb01cef328e133905
+
+  - name: libheif
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DWITH_EXAMPLES=ON
+      - -DWITH_LIBDE265=ON
+      - -DWITH_DAV1D=ON
+      - -DWITH_X265=OFF
+      - -DWITH_AOM_ENCODER=OFF
+      - -DWITH_AOM_DECODER=OFF
+      - -DWITH_RAV1E=OFF
+      - -DWITH_SvtEnc=OFF
+      - -DWITH_GDK_PIXBUF=OFF
+      - -DENABLE_PLUGIN_LOADING=OFF
+      - -DBUILD_TESTING=OFF
+    sources:
+      - type: archive
+        url: https://github.com/strukturag/libheif/releases/download/v1.23.5/libheif-1.23.5.tar.gz
+        sha256: fd9036064c4432f0550d15072ddf34956a248279ee9aeaff0fba3fa0f77d8f1a
+
+  - name: imagemagick
+    config-opts:
+      - --disable-static
+      - --disable-docs
+      - --without-perl
+      - --without-x
+      - --without-magick-plus-plus
+      - --with-heic=yes
+      - --with-rsvg=yes
+      - --with-webp=yes
+    sources:
+      - type: archive
+        url: https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.2-32.tar.gz
+        sha256: 940e349f0ef394e658fd57400b83d1d7a81b954f6e7bdbfbfad31b2718c10add
+
+  - name: poppler
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DENABLE_UTILS=ON
+      - -DENABLE_CPP=OFF
+      - -DENABLE_GLIB=OFF
+      - -DENABLE_GOBJECT_INTROSPECTION=OFF
+      - -DENABLE_QT5=OFF
+      - -DENABLE_QT6=OFF
+      - -DENABLE_BOOST=OFF
+      - -DENABLE_NSS3=OFF
+      - -DENABLE_GPGME=OFF
+      - -DENABLE_LIBCURL=OFF
+      - -DENABLE_LIBOPENJPEG=none
+      - -DBUILD_GTK_TESTS=OFF
+      - -DBUILD_QT5_TESTS=OFF
+      - -DBUILD_QT6_TESTS=OFF
+      - -DBUILD_CPP_TESTS=OFF
+      - -DBUILD_MANUAL_TESTS=OFF
+    sources:
+      - type: archive
+        url: https://poppler.freedesktop.org/poppler-26.09.0.tar.xz
+        sha256: 8059eadb6805340768f138c465b57f8164c92b4a0773c37ef031ea6c0d987b2e
+
+  - name: pandoc
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bin/pandoc /app/bin/pandoc
+    sources:
+      - type: archive
+        only-arches: [x86_64]
+        url: https://github.com/jgm/pandoc/releases/download/3.12/pandoc-3.12-linux-amd64.tar.gz
+        sha256: 67d7d011fed8c8543306022b985b9b2499ab9b74818df91d8727c7e9ebc5ba06
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/jgm/pandoc/releases/download/3.12/pandoc-3.12-linux-arm64.tar.gz
+        sha256: 6cefcf7100e23a99447c26f89d1ff5b253f3407fcef99a9e27ae06f3ed16cb82
+
+  - name: 7zip
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 7zz /app/bin/7zz
+    sources:
+      - type: archive
+        strip-components: 0
+        only-arches: [x86_64]
+        url: https://github.com/ip7z/7zip/releases/download/26.03/7z2603-linux-x64.tar.xz
+        sha256: dc99eff5008f1ab79bd7084c68513701547a808a89502bf4133683535ab3c695
+      - type: archive
+        strip-components: 0
+        only-arches: [aarch64]
+        url: https://github.com/ip7z/7zip/releases/download/26.03/7z2603-linux-arm64.tar.xz
+        sha256: 2389ba20e4d8295e8709c20b6263b69bd1ec4972fe38a04ad7a1badbf595b996
+
+  - name: python-deps
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} --no-build-isolation pyyaml fonttools brotli
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz
+        sha256: d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f
+      - type: file
+        url: https://files.pythonhosted.org/packages/f6/10/d45b74135d5d642cb3a4fb0a957c1613ef93de4c8548671dfc3a5bf38299/fonttools-4.66.1-py3-none-any.whl
+        sha256: 7234ae9e28db64273fbbfa72caebd0a97e3bdba6b05064114741b9539ef339d0
+      - type: file
+        url: https://files.pythonhosted.org/packages/f7/16/c92ca344d646e71a43b8bb353f0a6490d7f6e06210f8554c8f874e454285/brotli-1.2.0.tar.gz
+        sha256: e310f77e41941c13340a95976fe66a8a95b01e783d430eeaf7a2f87e0a57dd0a
+
+  - name: convertoor
+    buildsystem: simple
+    build-commands:
+      - PREFIX=/app ./install.sh --no-deps
+    sources:
+      - type: dir
+        path: ../..
+        skip: [.git, dist, build-dir, .flatpak-builder]

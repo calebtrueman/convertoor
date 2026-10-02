@@ -223,8 +223,11 @@ class FileRow(Adw.ActionRow):
             self.status_icon.set_from_icon_name("object-select-symbolic")
             self.status_icon.set_tooltip_text("Converted")
             self.open_btn.set_visible(True)
+            where = ""
+            if os.path.dirname(outputs[0]) != os.path.dirname(self.path) and len(outputs) == 1:
+                where = f" in {os.path.basename(os.path.dirname(outputs[0])) or '/'}"
             if len(outputs) == 1:
-                self._set_subtitle(f"Saved as {os.path.basename(outputs[0])}")
+                self._set_subtitle(f"Saved as {os.path.basename(outputs[0])}{where}")
             else:
                 self._set_subtitle(f"Saved {len(outputs)} files in "
                                    f"{os.path.basename(os.path.dirname(outputs[0]))}")
@@ -422,7 +425,7 @@ class MainWindow(Adw.ApplicationWindow):
     def add_files(self, paths):
         known = {r.path for r in self.rows}
         added = 0
-        for path in expand(paths):
+        for path in expand([engine.host_path(p) for p in paths]):
             path = os.path.abspath(path)
             if path in known or not os.path.isfile(path):
                 continue
@@ -537,6 +540,10 @@ class MainWindow(Adw.ApplicationWindow):
         row.start()
         self.running += 1
         out_dir = self.output_dir
+        if not out_dir and not os.access(os.path.dirname(row.path), os.W_OK):
+            # Read-only location (or a sandboxed drop we can't write next to).
+            out_dir = (GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD)
+                       or os.path.expanduser("~"))
 
         def work():
             try:

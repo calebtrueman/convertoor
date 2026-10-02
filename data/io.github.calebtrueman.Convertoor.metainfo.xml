@@ -19,6 +19,11 @@
       Poppler, librsvg, libheif, Calibre and fontTools — and automatically chains them
       when no single tool can do the job.
     </p>
+    <p>
+      Office documents, spreadsheets and presentations require LibreOffice, and ebook
+      formats such as MOBI, AZW3 and FB2 require Calibre. Install them separately; the
+      app tells you when one is missing.
+    </p>
   </description>
   <launchable type="desktop-id">io.github.calebtrueman.Convertoor.desktop</launchable>
   <url type="homepage">https://github.com/calebtrueman/convertoor</url>

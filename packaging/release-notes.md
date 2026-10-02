@@ -11,6 +11,13 @@
 
 Every installer on this page was installed and tested on Ubuntu 22.04 & 24.04, Debian 12 & 13, Fedora, openSUSE Tumbleweed and Arch Linux, and the Flatpak on x86_64 and aarch64, before this release was published.
 
-The Flatpak bundles FFmpeg, ImageMagick, Pandoc, Poppler, libheif and 7-Zip. For office and ebook formats it uses LibreOffice and Calibre from your system if they're installed, natively or as Flatpaks.
+### ⚠️ Office and ebook formats require LibreOffice / Calibre
+
+Convertoor drives existing tools, so these formats **only work when the tool is installed**:
+
+- **LibreOffice** is required for Word, Excel, PowerPoint and OpenDocument files, and for converting office files or Markdown/HTML to PDF. The `.deb` and `.rpm` install it automatically. **On Arch and with the Flatpak you must install it yourself** (`sudo pacman -S libreoffice-fresh`, or `flatpak install flathub org.libreoffice.LibreOffice`).
+- **Calibre** is required for MOBI, AZW3, FB2, LIT, PDB and comic-book ebooks. **No package installs it for you**: run `sudo apt/dnf/pacman install calibre`, `flatpak install flathub com.calibre_ebook.calibre`, or use `install.sh --full`.
+
+The Flatpak bundles everything else: FFmpeg, ImageMagick, Pandoc, Poppler, libheif and 7-Zip. When something is missing, the app shows a banner and marks the affected files, and `convertoor --doctor` lists what to install.
 
 After installing, run `convertoor --doctor` to see which converters are available. Fedora users who want the full set of video codecs can swap `ffmpeg-free` for RPM Fusion's `ffmpeg`.

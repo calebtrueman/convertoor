@@ -144,10 +144,16 @@ class FileRow(Adw.ActionRow):
                 self.dropdown.set_selected(self.targets.index(preferred))
         else:
             self.dropdown = None
-            hints = engine.missing_tools(self.fmt) if self.fmt else []
-            msg = ("Install " + ", ".join(hints) + " to convert this") if hints else \
-                "Unsupported file type"
-            self.base_subtitle += f" · {msg}"
+        missing = engine.missing_backends(self.fmt) if self.fmt else []
+        names = " and ".join(b.name for b in missing)
+        if missing:
+            self.set_tooltip_text("Not installed — install: " +
+                                  "; ".join(b.install_hint for b in missing))
+        if not self.targets:
+            self.base_subtitle += (f" · Requires {names} (not installed)" if missing
+                                   else " · Unsupported file type")
+        elif missing:
+            self.base_subtitle += f" · More formats require {names}"
 
         remove = Gtk.Button(icon_name="window-close-symbolic", valign=Gtk.Align.CENTER,
                             tooltip_text="Remove")
@@ -302,6 +308,8 @@ class MainWindow(Adw.ApplicationWindow):
                                   tooltip_text="Main Menu")
         header.pack_end(menu_btn)
 
+        self._add_missing_banner(root)
+
         self.toasts = Adw.ToastOverlay(vexpand=True)
         root.append(self.toasts)
 
@@ -377,6 +385,29 @@ class MainWindow(Adw.ApplicationWindow):
         self.toasts.add_controller(drop)
 
         self.update_actions()
+
+    def _add_missing_banner(self, root):
+        """Tell the user up front when LibreOffice/Calibre aren't installed."""
+        missing = [b for b in engine.BACKENDS
+                   if isinstance(b, engine.HostBackend) and not b.available()]
+        key = ",".join(b.name for b in missing)
+        if not missing or self.settings.get("banner_dismissed") == key:
+            return
+        text = " and ".join(f"{b.name} is required for {b.short_required}" for b in missing)
+        text = text[0].upper() + text[1:] + " — not installed."
+        if not hasattr(Adw, "Banner"):  # libadwaita < 1.3
+            GLib.idle_add(lambda: self.toasts.add_toast(Adw.Toast(title=text, timeout=8))
+                          and False)
+            return
+        banner = Adw.Banner(title=text, button_label="Details", revealed=True)
+
+        def details(*_):
+            banner.set_revealed(False)
+            self.settings.set("banner_dismissed", key)
+            ToolsWindow(self).present()
+
+        banner.connect("button-clicked", details)
+        root.append(banner)
 
     # -- settings helpers --
     def last_target_for(self, fmt):
@@ -660,8 +691,12 @@ class ToolsWindow(Adw.Window):
         inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         clamp.set_child(inner)
         intro = Gtk.Label(wrap=True, xalign=0, label=(
-            "Convertoor uses these open-source tools. Install missing ones with your "
-            "package manager to unlock more formats, then restart the app."))
+            "Convertoor converts files with these open-source tools. Formats handled by a "
+            "tool marked ⚠ won't work until that tool is installed. Install it with your "
+            "package manager, then restart Convertoor."
+            + ("\n\nIn the Flatpak, LibreOffice and Calibre aren't bundled: install them on "
+               "your system or from Flathub and Convertoor will use them."
+               if engine.IN_FLATPAK else "")))
         intro.add_css_class("dim-label")
         inner.append(intro)
         lb = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
@@ -675,7 +710,9 @@ class ToolsWindow(Adw.Window):
                 row.set_subtitle(_esc(f"{b.description}\n{where}"))
                 icon = Gtk.Image.new_from_icon_name("object-select-symbolic")
             else:
-                row.set_subtitle(_esc(f"{b.description}\nNot installed — package: {b.install_hint}"))
+                needed = f"\nRequired for {b.required_for}." if b.required_for else ""
+                row.set_subtitle(_esc(f"{b.description}{needed}\n"
+                                      f"Not installed — install: {b.install_hint}"))
                 icon = Gtk.Image.new_from_icon_name("dialog-warning-symbolic")
             row.add_suffix(icon)
             lb.append(row)

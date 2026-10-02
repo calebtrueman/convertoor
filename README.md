@@ -50,9 +50,17 @@ converters**: FFmpeg (with x264, LAME, VP9, Opus, Vorbis, dav1d), ImageMagick, l
 Poppler, Pandoc, 7-Zip, PyYAML and fontTools. Nothing else needs to be installed for
 images, audio, video, markup documents, data, archives and fonts.
 
-LibreOffice and Calibre are too big to bundle. If either is installed on your system,
-natively or as its own Flatpak (`flatpak install flathub org.libreoffice.LibreOffice`),
-Convertoor runs it through `flatpak-spawn` for office and ebook formats.
+**LibreOffice and Calibre are not bundled, because they're too big.** Office documents
+(Word, Excel, PowerPoint, OpenDocument) and ebook formats (MOBI, AZW3, FB2 …) **only work if
+you install them yourself**, either on your system or from Flathub:
+
+```sh
+flatpak install flathub org.libreoffice.LibreOffice   # office formats
+flatpak install flathub com.calibre_ebook.calibre     # ebook formats
+```
+
+Convertoor finds either kind of install and runs it through `flatpak-spawn`. See
+[Formats that require extra software](#formats-that-require-extra-software).
 
 Sandbox permissions, and why each is needed:
 
@@ -98,9 +106,29 @@ Or run it straight from a checkout: `PYTHONPATH=src python3 -m convertoor`
 | **Archives** | ZIP, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, 7Z, RAR (read) | built in, 7-Zip |
 | **Fonts** | TTF, OTF, WOFF, WOFF2 | fontTools |
 
-Which formats you get depends on which tools are installed. The packages pull in the
-important ones automatically. Open **Menu → Installed Converters**, or run
-`convertoor --doctor`, to see what's available and what to install for more.
+### Formats that require extra software
+
+Convertoor doesn't convert anything itself. It drives the tools in the table above, so
+**a format only works if the tool listed for it is installed.** Two of them are often
+not installed:
+
+| Required software | Needed for | `.deb` | `.rpm` | Arch | Flatpak | `install.sh` |
+|---|---|---|---|---|---|---|
+| **LibreOffice** | Word (DOC/DOCX), Excel (XLS/XLSX), PowerPoint (PPT/PPTX), OpenDocument, RTF, WordPerfect, Pages/Numbers/Keynote, Visio, Publisher; office files → PDF; Markdown/HTML → PDF; spreadsheets ⇄ JSON/CSV | installed by default | installed by default | **you must install** `libreoffice-fresh` | **you must install** on your system or `flatpak install flathub org.libreoffice.LibreOffice` | installed |
+| **Calibre** | MOBI, AZW/AZW3, FB2, LIT, PDB, LRF, CBZ/CBR/CB7, DjVu, CHM | **you must install** `calibre` | **you must install** `calibre` | **you must install** `calibre` | **you must install** on your system or `flatpak install flathub com.calibre_ebook.calibre` | only with `--full` |
+
+Pandoc covers basic DOCX/ODT/EPUB conversion without LibreOffice or Calibre. For
+example, DOCX → Markdown works with Pandoc alone, but DOCX → PDF needs LibreOffice.
+
+When a tool is missing, Convertoor tells you instead of failing silently:
+
+- a banner at the top of the window names the missing tool and what it's needed for;
+- a file that needs it says **"Requires LibreOffice (not installed)"**, or **"More
+  formats require LibreOffice"** when some conversions still work without it;
+- **Menu → Installed Converters** and `convertoor --doctor` list every tool, what each is
+  required for, and the command to install it.
+
+After installing a tool, restart Convertoor to pick it up.
 
 ## Command line
 

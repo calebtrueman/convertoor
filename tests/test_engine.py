@@ -212,3 +212,10 @@ def test_document_to_png_pages(tmp_path):
     md.write_text("# One\n\n" + "\n\n".join("para %d" % i for i in range(5)))
     outs = engine.convert_file(md, "png")
     assert outs and all(o.read_bytes()[:4] == b"\x89PNG" for o in outs)
+
+
+def test_data_routes_through_csv_to_spreadsheets():
+    data = Fake("data", {"json": ["csv"], "csv": ["json"]})
+    office = Fake("office", {"csv": ["xlsx"], "xlsx": ["csv"]})
+    assert [s[2] for s in engine.plan("json", "xlsx", [data, office])] == ["csv", "xlsx"]
+    assert [s[2] for s in engine.plan("xlsx", "json", [data, office])] == ["csv", "json"]

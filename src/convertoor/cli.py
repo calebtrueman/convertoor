@@ -50,6 +50,8 @@ def doctor():
         where = path if path and path not in ("builtin",) else ("built in" if path else
                                                                  f"missing — install {b.install_hint}")
         print(f" {mark} {b.name:<16} {b.description}\n   {'':<16} {where}")
+        if not path and b.required_for:
+            print(f"   {'':<16} required for: {b.required_for}")
     return 0
 
 
@@ -69,10 +71,11 @@ def list_targets(files):
             print(f"{path}: unrecognised file type")
             continue
         t = engine.targets(fmt)
-        hints = engine.missing_tools(fmt)
+        missing = engine.missing_backends(fmt)
         print(f"{path} ({fmt}): {' '.join(t) if t else '(none)'}")
-        if hints:
-            print(f"  more with: {', '.join(hints)}")
+        for b in missing:
+            what = "required" if not t else "needed for more formats"
+            print(f"  {b.name} {what} — install: {b.install_hint}")
     return 0
 
 

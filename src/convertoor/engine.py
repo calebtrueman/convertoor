@@ -200,6 +200,8 @@ class Backend:
     binaries: tuple = ()
     #: package names shown to the user when the backend is missing
     install_hint = ""
+    #: formats that need this tool (shown when it's missing)
+    required_for = ""
 
     def available(self) -> bool:
         return bool(self.path())
@@ -219,7 +221,8 @@ class HostBackend(Backend):
 
     def __init__(self):
         if IN_FLATPAK and self.host_flatpak:
-            self.install_hint = f"flatpak install flathub {self.host_flatpak[0]}"
+            self.install_hint = (f"{self.name} on your system, or: "
+                                 f"flatpak install flathub {self.host_flatpak[0]}")
 
     def _host(self):
         app, cmd = self.host_flatpak or (None, None)
@@ -603,7 +606,9 @@ class Pandoc(Backend):
 
     def _ok(self, kind, fmt):
         need = PANDOC_MIN.get((kind, fmt))
-        return need is None or _pandoc_version(self.path()) >= need
+        if need is None or not self.path():
+            return True
+        return _pandoc_version(self.path()) >= need
 
     def targets(self, src):
         reader = PANDOC_READERS.get(src)
@@ -657,6 +662,9 @@ class LibreOffice(HostBackend):
     description = "Office documents, spreadsheets, presentations, to PDF"
     binaries = ("soffice", "libreoffice")
     install_hint = "libreoffice"
+    short_required = "office documents"
+    required_for = ("Word, Excel, PowerPoint and OpenDocument files, office files to PDF, "
+                    "and Markdown/HTML to PDF")
     host_flatpak = ("org.libreoffice.LibreOffice", "libreoffice")
 
     def targets(self, src):
@@ -709,6 +717,8 @@ class Calibre(HostBackend):
     description = "Ebooks: EPUB, MOBI, AZW3, FB2, comics"
     binaries = ("ebook-convert",)
     install_hint = "calibre"
+    short_required = "ebook formats"
+    required_for = "MOBI, AZW3, FB2, LIT, PDB and comic book (CBZ/CBR) ebooks"
     host_flatpak = ("com.calibre_ebook.calibre", "ebook-convert")
     targets = staticmethod(_pairs(CALIBRE_IN, CALIBRE_OUT))
 
@@ -905,7 +915,7 @@ _CROSS_ONLY = {
     (F.EBOOK, F.IMAGE): {"png", "jpg"},
 }
 # Formats never used as stepping stones (lossy or odd intermediates).
-_NO_TRANSIT = {"gif", "txt", "csv", "ico", "pbm", "pgm", "xpm", "eps", "jpg", "wma", "amr"}
+_NO_TRANSIT = {"gif", "txt", "ico", "pbm", "pgm", "xpm", "eps", "jpg", "wma", "amr"}
 
 
 def available_backends():
@@ -1004,14 +1014,37 @@ _STATIC_INPUTS = {
 }
 
 
-def missing_tools(src):
-    """Install hints for tools that would let us handle ``src`` (or handle it better)."""
-    hints = []
+def missing_backends(src):
+    """Backends that aren't installed but would handle ``src`` (or handle it better)."""
+    missing = []
     for b in BACKENDS:
         if src not in _STATIC_INPUTS.get(b.name, ()):
             continue
         if b.available() and b.targets(src):
             continue
+        missing.append(b)
+    return missing
+
+
+def missing_for(src, dst):
+    """Uninstalled backends that would each make ``src`` -> ``dst`` possible."""
+    have = available_backends()
+    found = []
+    for b in BACKENDS:
+        if b in have:
+            continue
+        try:
+            if plan(src, dst, have + [b]):
+                found.append(b)
+        except Exception:
+            continue
+    return found
+
+
+def missing_tools(src):
+    """Install hints for tools that would let us handle ``src`` (or handle it better)."""
+    hints = []
+    for b in missing_backends(src):
         if b.name == "Data formats":
             hint = "python3-yaml" if src == "yaml" else "python3-tomli"
         else:
@@ -1045,8 +1078,11 @@ def convert_file(src, dst_fmt, out_dir=None, job=None):
     dst_fmt = F.canonical(dst_fmt) or dst_fmt
     steps = plan(src_fmt, dst_fmt)
     if not steps:
-        hints = missing_tools(src_fmt)
-        extra = f" (try installing: {', '.join(hints)})" if hints else ""
+        need = missing_for(src_fmt, dst_fmt)
+        extra = ""
+        if need:
+            extra = ": requires " + " or ".join(
+                f"{b.name} (install: {b.install_hint})" for b in need)
         raise ConversionError(f"Can't convert {src_fmt.upper()} to {dst_fmt.upper()}{extra}")
     out_dir = Path(out_dir).expanduser().resolve() if out_dir else src.parent
     out_dir.mkdir(parents=True, exist_ok=True)

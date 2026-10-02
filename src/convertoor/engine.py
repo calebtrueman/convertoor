@@ -814,6 +814,11 @@ _CROSS = {
     (F.DRAWING, F.IMAGE), (F.DRAWING, F.DOCUMENT), (F.DOCUMENT, F.PRESENTATION),
     (F.EBOOK, F.IMAGE),
 }
+# Cross-category routes limited to a few sensible destinations.
+_CROSS_ONLY = {
+    (F.DATA, F.DOCUMENT): {"pdf", "docx", "odt", "html", "md"},
+    (F.EBOOK, F.IMAGE): {"png", "jpg"},
+}
 # Formats never used as stepping stones (lossy or odd intermediates).
 _NO_TRANSIT = {"gif", "txt", "csv", "ico", "pbm", "pgm", "xpm", "eps", "jpg", "wma", "amr"}
 
@@ -877,7 +882,8 @@ def _targets_cached(src, key):
         if dst in found or dst == src:
             continue
         sc, dc = F.category(src), F.category(dst)
-        if sc != dc and (sc, dc) not in _CROSS:
+        if sc != dc and ((sc, dc) not in _CROSS or
+                         dst not in _CROSS_ONLY.get((sc, dc), (dst,))):
             continue
         steps = plan(src, dst, backends)
         if steps:

@@ -17,6 +17,7 @@ case "$kind" in
     suse)
         zypper --non-interactive refresh
         zypper --non-interactive install --allow-unsigned-rpm "$pkg" xvfb-run dbus-1 xauth which
+        zypper --non-interactive install dbus-1-daemon || zypper --non-interactive install dbus-1-tools || true
         ;;
     arch)
         pacman -Syu --noconfirm
@@ -51,13 +52,18 @@ convertoor -t jpg pic.png
 convertoor -t xml data.json
 if command -v pandoc >/dev/null; then convertoor -t docx doc.md; fi
 if command -v rsvg-convert >/dev/null; then
-    cp /usr/share/icons/hicolor/scalable/apps/io.github.calebtrueman.Convertoor.svg icon.svg
+    prefix=$(dirname "$(dirname "$(command -v convertoor)")")
+    cp "$prefix/share/icons/hicolor/scalable/apps/io.github.calebtrueman.Convertoor.svg" icon.svg
     convertoor -t png icon.svg
 fi
 ls -la
 
 # Real GUI, end to end, on a virtual display.
 export GSK_RENDERER=cairo GDK_BACKEND=x11 NO_AT_BRIDGE=1
-dbus-run-session -- xvfb-run -a convertoor --self-test tone.wav flac
+if command -v dbus-run-session >/dev/null; then
+    dbus-run-session -- xvfb-run -a convertoor --self-test tone.wav flac
+else
+    xvfb-run -a convertoor --self-test tone.wav flac
+fi
 test -s tone.flac
 echo "SMOKE TEST PASSED ($kind)"

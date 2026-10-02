@@ -36,11 +36,38 @@ Grab the package for your distro from the [**latest release**](https://github.co
 | Fedora | `.rpm` | `sudo dnf install ./convertoor-*.noarch.rpm` |
 | openSUSE Tumbleweed / Leap | `.rpm` | `sudo zypper install --allow-unsigned-rpm ./convertoor-*.noarch.rpm` |
 | Arch, Manjaro, EndeavourOS, CachyOS | `.pkg.tar.zst` | `sudo pacman -U ./convertoor-*-any.pkg.tar.zst` |
+| Any distro with Flatpak | `.flatpak` | `flatpak install --user ./convertoor-*-x86_64.flatpak` |
 | Any other distro | `.tar.gz` | `tar xf convertoor-*.tar.gz && ./convertoor-*/install.sh` |
 
 Before a release is published, every package is installed and tested (CLI and GUI) in
 clean Ubuntu 22.04, Ubuntu 24.04, Debian 12, Debian 13, Fedora, openSUSE Tumbleweed and
-Arch Linux containers.
+Arch Linux containers. The Flatpak is tested on x86_64 and aarch64.
+
+### Flatpak
+
+The Flatpak (x86_64 and aarch64) runs on the GNOME runtime and **bundles its own
+converters**: FFmpeg (with x264, LAME, VP9, Opus, Vorbis, dav1d), ImageMagick, libheif,
+Poppler, Pandoc, 7-Zip, PyYAML and fontTools. Nothing else needs to be installed for
+images, audio, video, markup documents, data, archives and fonts.
+
+LibreOffice and Calibre are too big to bundle. If either is installed on your system,
+natively or as its own Flatpak (`flatpak install flathub org.libreoffice.LibreOffice`),
+Convertoor runs it through `flatpak-spawn` for office and ebook formats.
+
+Sandbox permissions, and why each is needed:
+
+| Permission | Why |
+|---|---|
+| `--filesystem=home`, `/media`, `/run/media`, `/mnt` | Save converted files next to the originals |
+| `--talk-name=org.freedesktop.FileManager1` | "Show in folder" button |
+| `--talk-name=org.freedesktop.Flatpak` | Run LibreOffice/Calibre from the host. This lets the app run host commands, so it's effectively unsandboxed. Remove it with `flatpak override --user --no-talk-name=org.freedesktop.Flatpak io.github.calebtrueman.Convertoor` if you don't need office/ebook formats |
+
+Build it yourself:
+
+```sh
+flatpak-builder --user --install --force-clean build-dir \
+  packaging/flatpak/io.github.calebtrueman.Convertoor.yml
+```
 
 The universal `install.sh` detects apt, dnf, zypper, pacman, xbps (Void), apk (Alpine) and
 eopkg (Solus) and installs the dependencies for you. Options:

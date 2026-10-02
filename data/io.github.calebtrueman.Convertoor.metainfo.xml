@@ -25,6 +25,9 @@
   <url type="bugtracker">https://github.com/calebtrueman/convertoor/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.1.0" date="2026-10-01">
+      <description><p>Flatpak release with FFmpeg, ImageMagick, Pandoc, Poppler, libheif and 7-Zip bundled.</p></description>
+    </release>
     <release version="1.0.0" date="2026-10-01"/>
   </releases>
 </component>

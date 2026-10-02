@@ -1,6 +1,6 @@
 # Maintainer: Caleb Trueman <calebtrueman@users.noreply.github.com>
 pkgname=convertoor
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Drag-and-drop file converter for images, audio, video, documents and more"
 arch=('any')

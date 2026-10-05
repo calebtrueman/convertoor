@@ -1,0 +1,26 @@
+name: macOS
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64, runner: macos-15 }
+          - { arch: x86_64, runner: macos-15-intel }
+    runs-on: ${{ matrix.runner }}
+    name: macOS (${{ matrix.arch }})
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build app and disk image
+        run: packaging/macos/build.sh
+      - uses: actions/upload-artifact@v5
+        with:
+          name: macos-${{ matrix.arch }}
+          path: dist/*.dmg
+      - name: Install and test without Homebrew
+        run: packaging/macos/smoke-test.sh dist/*.dmg

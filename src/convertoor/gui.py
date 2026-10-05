@@ -69,6 +69,10 @@ class Settings:
 
 def _open_folder_of(path):
     """Show ``path`` in the file manager, selecting it when possible."""
+    if sys.platform == "darwin":
+        import subprocess
+        subprocess.Popen(["open", "-R", path])
+        return
     uri = Gio.File.new_for_path(path).get_uri()
     try:
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -692,8 +696,8 @@ class ToolsWindow(Adw.Window):
         clamp.set_child(inner)
         intro = Gtk.Label(wrap=True, xalign=0, label=(
             "Convertoor converts files with these open-source tools. Formats handled by a "
-            "tool marked ⚠ won't work until that tool is installed. Install it with your "
-            "package manager, then restart Convertoor."
+            "tool marked ⚠ won't work until that tool is installed. Install it, then "
+            "restart Convertoor."
             + ("\n\nIn the Flatpak, LibreOffice and Calibre aren't bundled: install them on "
                "your system or from Flathub and Convertoor will use them."
                if engine.IN_FLATPAK else "")))
@@ -729,10 +733,10 @@ class ConvertoorApp(Adw.Application):
         for name, cb, accels in (
             ("about", self._on_about, None),
             ("tools", self._on_tools, None),
-            ("shortcuts", self._on_shortcuts, ["<Control>question"]),
-            ("quit", lambda *_: self.quit(), ["<Control>q"]),
-            ("open", lambda *_: self._window().choose_files(), ["<Control>o"]),
-            ("convert", lambda *_: self._window().convert_all(), ["<Control>Return"]),
+            ("shortcuts", self._on_shortcuts, ["<Primary>question"]),
+            ("quit", lambda *_: self.quit(), ["<Primary>q"]),
+            ("open", lambda *_: self._window().choose_files(), ["<Primary>o"]),
+            ("convert", lambda *_: self._window().convert_all(), ["<Primary>Return"]),
         ):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", cb)
@@ -835,16 +839,16 @@ SHORTCUTS_UI = """
             <property name="title">General</property>
             <child><object class="GtkShortcutsShortcut">
               <property name="title">Add files</property>
-              <property name="accelerator">&lt;Control&gt;o</property></object></child>
+              <property name="accelerator">&lt;Primary&gt;o</property></object></child>
             <child><object class="GtkShortcutsShortcut">
               <property name="title">Convert</property>
-              <property name="accelerator">&lt;Control&gt;Return</property></object></child>
+              <property name="accelerator">&lt;Primary&gt;Return</property></object></child>
             <child><object class="GtkShortcutsShortcut">
               <property name="title">Keyboard shortcuts</property>
-              <property name="accelerator">&lt;Control&gt;question</property></object></child>
+              <property name="accelerator">&lt;Primary&gt;question</property></object></child>
             <child><object class="GtkShortcutsShortcut">
               <property name="title">Quit</property>
-              <property name="accelerator">&lt;Control&gt;q</property></object></child>
+              <property name="accelerator">&lt;Primary&gt;q</property></object></child>
           </object>
         </child>
       </object>

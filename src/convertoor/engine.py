@@ -21,6 +21,9 @@ from pathlib import Path
 
 from . import formats as F
 from . import datafmt
+from . import macos
+
+macos.setup()
 
 MAX_HOPS = 3
 
@@ -899,6 +902,7 @@ BACKENDS = [
     Rsvg(), HeifConvert(), Poppler(), ImageMagick(), FFmpeg(), Pandoc(), LibreOffice(),
     Calibre(), Data(), Archives(), Fonts(), FFmpegImage(),
 ]
+macos.apply_hints(BACKENDS)
 
 # Multi-step routes may only cross categories in these directions; direct
 # single-tool conversions are always allowed.
